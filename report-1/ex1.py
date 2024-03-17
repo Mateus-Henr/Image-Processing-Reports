@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+not_white = [[150, 110, 110], [252, 252, 252]]
+
 # Boundaries for the colours
 boundaries = {
     'green': [[60, 50, 50], [80, 255, 255]],  # Hue: 60-80, Saturation: 50-255, Value: 50-255
@@ -11,30 +13,31 @@ boundaries = {
     'blue': [[101, 50, 38], [110, 255, 255]],  # Hue: 101-110, Saturation: 50-255, Value: 38-255
 }
 
-def replace_white(img):
-    # Convert image to HSV color space
+
+def replace_colour(img):
+    mask = cv2.inRange(img, np.array(not_white[0]), np.array(not_white[1]))
+    img[np.where(mask != 0)] -= 55
+    img = np.clip(img, 0, 255)
+
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-    # Create a mask for white areas
-    mask_white = cv2.inRange(img, np.array([150, 150, 150]), np.array([255, 255, 255]))
-
-    # Create a mask for non-white areas
-    mask_not_white = cv2.bitwise_not(mask_white)
-
     # Create a mask for each color range
-    masks = {color: cv2.inRange(hsv, np.array(boundaries[color][0]), np.array(boundaries[color][1])) for color in boundaries}
+    masks = {color: cv2.inRange(hsv, np.array(boundaries[color][0]), np.array(boundaries[color][1])) for color in
+             boundaries}
 
-    # Replace white areas with color from neighboring pixels
-    for color, mask_color in masks.items():
-        mask_color_not_white = cv2.bitwise_and(mask_not_white, mask_color)
-        img[np.where(mask_white != 0)] = cv2.mean(img, mask=mask_color_not_white)[:3]
+    # Replace colors based on the masks
+    for color in masks:
+        hsv[np.where(masks[color] != 0)] = boundaries[color][1]
 
-    return img
+    # Convert the modified HSV image back to BGR color space
+    modified_img = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    return modified_img
+
 
 img = cv2.imread('halteres.jpg')
 
 # Display the modified image
-cv2.imshow("Halter", replace_white(img))
+cv2.imshow("Halter", replace_colour(img))
 
 # Wait for ESC key to exit
 while True:
