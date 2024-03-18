@@ -1,43 +1,85 @@
-import numpy as np
 import cv2
+import numpy as np
 
 boundaries = {
-    'green': [[60, 50, 50], [80, 255, 255]],  # Hue: 60-80, Saturation: 50-255, Value: 50-255
-    'yellow': [[20, 100, 100], [30, 255, 255]],  # Hue: 20-30, Saturation: 100-255, Value: 100-255
-    'red': [[160, 100, 100], [190, 255, 255]],  # Hue: 160-180, Saturation: 100-255, Value: 100-255
-    'grey': [[0, 0, 100], [179, 50, 200]],  # Hue: 0-179, Saturation: 0-50, Value: 100-200
-    'black': [[0, 0, 0], [179, 50, 50]],  # Hue: 0-179, Saturation: 0-50, Value: 0-50
-    'blue': [[101, 50, 38], [110, 255, 255]],  # Hue: 101-110, Saturation: 50-255, Value: 38-255
+    'black': [[0, 0, 0], [180, 255, 30]],  # Black
+    'white': [[0, 0, 231], [180, 18, 255]],  # White
+    'red': [[0, 50, 70], [9, 255, 255]],  # Red
+    'green': [[36, 50, 70], [89, 255, 255]],  # Green
+    'blue': [[90, 50, 70], [128, 255, 255]],  # Blue
+    'yellow': [[25, 50, 70], [35, 255, 255]],  # Yellow
+    'purple': [[129, 50, 70], [158, 255, 255]],  # Purple
+    'orange': [[10, 50, 70], [24, 255, 255]],  # Orange
+    'gray': [[0, 0, 40], [180, 18, 230]]  # Gray
 }
 
-cap = cv2.VideoCapture(0)  # cap = cv2.VideoCapture("video.mp4")
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter('output.avi', fourcc, 60.0, (1920, 1080))
+# Initialize video capture from webcam
+cap = cv2.VideoCapture(0)
+
+# Prompt user to input color name
+while True:
+    color_name = input(
+        'Enter the color name to track (black, white, red, green, blue, yellow, purple, orange, gray): ')
+    if color_name in boundaries:
+        break
+    else:
+        print(
+            'Invalid color name. Please enter one of the following: black, white, red1, red2, green, blue, yellow, purple, orange, gray')
+
+# Define range for blue color detection in HSV
+lower_blue = np.array(boundaries[color_name][0])
+upper_blue = np.array(boundaries[color_name][1])
+
+# Initialize variables to store previous point and path image
+prev_point = None
+path_img = np.zeros((480, 640, 3), dtype=np.uint8)
 counter = 0
 
-print('Colours')
-for colour in boundaries:
-    print(colour)
-colour = input('Type the colour that you desire:')
-
-if colour not in boundaries:
-    print('Invalid colour')
-    exit()
-
 while True:
+    # Capture frame-by-frame
     ret, frame = cap.read()
     frame = cv2.flip(frame, 1)
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-    mask = cv2.inRange(frame, boundaries[colour][0], boundaries[colour][1])
-
-    out.write(frame)
-    cv2.imshow('Original', frame)
-
-    counter += 1
-    if cv2.waitKey(1) == ord('q'):
+    if not ret:
         break
 
+    counter += 1
+
+    if counter % 10 == 0:
+        # Convert BGR to HSV
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        # Threshold the HSV image to get only blue colors
+        mask = cv2.inRange(hsv, lower_blue, upper_blue)
+
+        # Find contours
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Iterate through contours
+        for contour in contours:
+            # Get the centroid of the contour
+            M = cv2.moments(contour)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+
+                # Draw the centroid on the frame
+                cv2.circle(frame, (cx, cy), 5, (0, 255, 255), -1)
+
+                # Draw the path on the path image
+                if prev_point is not None:
+                    cv2.line(path_img, prev_point, (cx, cy), (255, 255, 255), 2)
+                prev_point = (cx, cy)
+
+    # Display the frame
+    cv2.imshow('Frame', frame)
+
+    # Break the loop if 'q' is pressed
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Save the path image
+cv2.imwrite('path_image.png', path_img)
+
+# Release the capture
 cap.release()
-out.release()
 cv2.destroyAllWindows()
