@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-not_white = [[150, 110, 110], [252, 252, 252]]
+not_white = [[120, 110, 110], [250, 250, 250]]
 
 # Boundaries for the colours
 boundaries = {
@@ -15,11 +15,17 @@ boundaries = {
 
 
 def replace_colour(img):
-    mask = cv2.inRange(img, np.array(not_white[0]), np.array(not_white[1]))
-    img[np.where(mask != 0)] -= 55
-    img = np.clip(img, 0, 255)
+    # Define the lower and upper bounds of the color range to replace
+    not_white_lower = np.array([140, 140, 140])
+    not_white_upper = np.array([254, 254, 254])
 
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    mask_white = cv2.inRange(img, not_white_lower, not_white_upper)
+    img[np.where(mask_white != 0)] -= 60  # Replace non-white pixels with black
+
+    return img
+
+def get_processed_hsv_img(original_img):
+    hsv = cv2.cvtColor(original_img, cv2.COLOR_BGR2HSV)
 
     # Create a mask for each color range
     masks = {color: cv2.inRange(hsv, np.array(boundaries[color][0]), np.array(boundaries[color][1])) for color in
@@ -36,8 +42,10 @@ def replace_colour(img):
 
 img = cv2.imread('halteres.jpg')
 
+processed_img = get_processed_hsv_img(img)
+
 # Display the modified image
-cv2.imshow("Halter", replace_colour(img))
+cv2.imshow("Halter", replace_colour(processed_img))
 
 # Wait for ESC key to exit
 while True:
