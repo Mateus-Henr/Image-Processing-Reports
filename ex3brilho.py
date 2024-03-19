@@ -2,27 +2,19 @@ import cv2
 import numpy as np
 
 def histograma(img, name):
+    bgr = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
     bgr_planes = cv2.split(img)
-
-    b_hist = cv2.calcHist(bgr_planes, [0], None, [256], [0, 256], accumulate=False)
-    g_hist = cv2.calcHist(bgr_planes, [1], None, [256], [0, 256], accumulate=False)
-    r_hist = cv2.calcHist(bgr_planes, [2], None, [256], [0, 256], accumulate=False)
+    bgr_hist = []
     hist_img = np.zeros((400, 512, 3), dtype=np.uint8)
 
-    cv2.normalize(b_hist, b_hist, alpha=0, beta=400, norm_type=cv2.NORM_MINMAX)
-    cv2.normalize(g_hist, g_hist, alpha=0, beta=400, norm_type=cv2.NORM_MINMAX)
-    cv2.normalize(r_hist, r_hist, alpha=0, beta=400, norm_type=cv2.NORM_MINMAX)
+    for i in range(3):
+        bgr_hist.append(cv2.calcHist(bgr_planes, [i], None, [256], [0, 256], accumulate=False))
+        cv2.normalize(bgr_hist[i], bgr_hist[i], alpha=0, beta=400, norm_type=cv2.NORM_MINMAX)
 
-    for i in range(1, 256):
-        cv2.line(hist_img, (2*(i-1), 400 - int(b_hist[i-1])),
-                (2*(i), 400 - int(b_hist[i])),
-                (255, 0, 0), thickness=2)
-        cv2.line(hist_img, (2*(i-1), 400 - int(g_hist[i-1])),
-                (2*(i), 400 - int(g_hist[i])),
-                (0, 255, 0), thickness=2)
-        cv2.line(hist_img, (2*(i-1), 400 - int(r_hist[i-1])),
-                (2*(i), 400 - int(r_hist[i])),
-                (0, 0, 255), thickness=2)
+        for j in range(1, 256):
+            cv2.line(hist_img, (2 * (j - 1), 400 - int(bgr_hist[i][j - 1])),
+                    (2 * (j + 1), 400 - int(bgr_hist[i][j])),
+                    bgr[i], thickness=2)
     
     cv2.imshow(name, hist_img)
 
