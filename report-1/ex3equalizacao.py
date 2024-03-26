@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
-img_original = cv2.imread('wiki.png',0)
+img_original = cv2.imread('wiki.png', 0)
 img_equ = cv2.equalizeHist(img_original)
 
 hist,bins = np.histogram(img_original.flatten(),256,[0,256])
