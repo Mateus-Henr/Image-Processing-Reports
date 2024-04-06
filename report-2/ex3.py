@@ -1,99 +1,52 @@
-from PIL import Image
-import pytesseract
-import cv2
+# import numpy as np
+# import cv2
+#
+# img = cv2.imread('amazonia1.jpg')
+# Z = img.reshape((-1, 3))
+# # Transformar a imagem em uma lista de tuplas (r, g, b)
+# tuplas_unicas = set(map(tuple, Z))
+# # Contar quantas tuplas únicas foram encontradas
+# num_cor_pixel_utilizada = len(tuplas_unicas)
+# print("Esta imagem utilizou %d combinações de cores RGB" % num_cor_pixel_utilizada)
+
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+import cv2
 
+# Load image
+image = cv2.imread('your_image.jpg')
+image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-def apply_wellner_threshold(img, window_size, k):
-    # Converte a imagem em escala de cinza
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# Reshape image data
+reshaped_image = image.reshape(-1, 3)
 
-    # Calcula a média local usando uma janela deslizante
-    mean = cv2.boxFilter(gray, cv2.CV_32F, (window_size, window_size))
+# Define number of clusters
+num_clusters = 5
 
-    # Aplica a fórmula de Wellner para calcular o limiar
-    threshold = mean * (1 + k * (gray - mean) / mean)
+# Create KMeans object
+kmeans = KMeans(n_clusters=num_clusters)
 
-    # Aplica o limiar na imagem
-    thresholded_img = np.zeros_like(gray)
-    thresholded_img[gray >= threshold] = 255
+# Fit KMeans to data
+kmeans.fit(reshaped_image)
 
-    return thresholded_img
+# Get cluster centers
+cluster_centers = kmeans.cluster_centers_.astype(int)
 
+# Plot clustered colors
+plt.figure(figsize=(8, 6))
+for color in cluster_centers:
+    plt.plot([0, 1], [color, color], linewidth=10)
+plt.axis('off')
+plt.show()
 
-def apply_niblack_threshold(img, window_size, k):
-    # Converte a imagem em escala de cinza
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# Assign labels to each pixel
+labels = kmeans.labels_
 
-    # Calcula a média e o desvio padrão locais usando uma janela deslizante
-    mean = cv2.blur(gray, (window_size, window_size))
-    mean_square = cv2.blur(gray * gray, (window_size, window_size))
-    variance = mean_square - mean * mean
+# Reshape labels to original image shape
+segmented_image = labels.reshape(image.shape[:2])
 
-    # Calcula o limiar usando a fórmula de Niblack
-    threshold = mean + k * np.sqrt(variance)
-
-    # Aplica o limiar na imagem
-    thresholded_img = np.zeros_like(gray)
-    thresholded_img[gray >= threshold] = 255
-
-    return thresholded_img
-
-def apply_otsu_threshold(img):
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Apply Otsu's thresholding
-    _, thresholded_img = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    return thresholded_img
-
-def apply_kmeans_clustering(img, num_clusters):
-    # Reshape the image into a 2D array
-    pixels = img.reshape((-1, 1))
-
-    # Initialize K-means clustering algorithm
-    kmeans = KMeans(n_clusters=num_clusters, random_state=0)
-
-    # Fit K-means to the data
-    kmeans.fit(pixels)
-
-    # Get cluster centers and labels
-    cluster_centers = np.uint8(kmeans.cluster_centers_)
-    labels = kmeans.labels_
-
-    # Map each pixel to its respective cluster center
-    clustered_img = cluster_centers[labels]
-
-    # Reshape the clustered image to its original shape
-    clustered_img = clustered_img.reshape(img.shape)
-
-    return clustered_img
-
-# Path to the image file
-image_path = 'placa1.png'
-window_size = 50
-k_niblack = -0.9
-k_wellner = 0.5
-
-# Open the image using PIL (Python Imaging Library)
-img = cv2.imread(image_path)
-
-# Apply Wellner's thresholding
-thresholded_img = apply_otsu_threshold(img)
-
-# Convert thresholded image to PIL Image
-converted_img = Image.fromarray(apply_kmeans_clustering(thresholded_img, 2))
-
-# Perform OCR on the thresholded image
-text = pytesseract.image_to_string(converted_img)
-
-# Print the extracted text
-print("Texto extraído: \n" + text)
-
-plt.imshow(converted_img, cmap='gray')
-plt.axis('off')  # Desativar os eixos
-plt.title('Imagem após a limiarização de OTSU')
+# Visualize segmented image
+plt.imshow(segmented_image, cmap='viridis')
+plt.axis('off')
 plt.show()
